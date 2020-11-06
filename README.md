@@ -7,7 +7,7 @@ pip3 install -r requirements.txt
 Đặt file ảnh vào thư mục src/image.png và chạy câu lệnh sau:
 ```
 cd src
-python3 index.p
+python3 index.py
 ```
 
 Chưa cập nhật dataset vì quá nặng, chỉ có model đã được train sẵn.
