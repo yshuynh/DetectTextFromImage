@@ -1,3 +1,11 @@
+# Edited by yshuynh - Cách sử dụng (chỉ test trên ubuntu)
+Cài đặt các module cần có bằng câu lệnh sau (cd vào thư mục project):
+pip3 install -r requirements.txt
+
+Đặt file ảnh vào thư mục src/image.png và chạy câu lệnh sau:
+cd src
+python3 index.p
+
 # Handwritten Text Recognition with TensorFlow
 
 Handwritten Text Recognition (HTR) system implemented with TensorFlow (TF) and trained on the IAM off-line HTR dataset.

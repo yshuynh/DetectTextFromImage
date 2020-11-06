@@ -8,7 +8,7 @@ import cv2
 import os
 
 
-img = Image.open('arial04.png') # Can be many different formats.
+img = Image.open('image.png') # Can be many different formats.
 imgPixel = img.load()
 print('width: ', img.width, 'height: ', img.height)  # Get the width and hight of the image for iterating over
 #print(pix[99,29])  # Get the RGBA Value of the a pixel of an image
