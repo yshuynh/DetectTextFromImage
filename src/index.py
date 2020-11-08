@@ -28,10 +28,6 @@ for i in range(img.width):
         col.append(0) 
     visited.append(col) 
 #visited = [[0] * im.height] * im.width # SAI
-x1 = 0
-x2 = 0
-y1 = 0
-y2 = 0
 
 
 def visit(x, y, id):
@@ -88,7 +84,13 @@ for y in range(0, img.height):
             if not os.path.exists(path):
 	            os.makedirs(path)
             img.crop((x1, y1, x2 + 1, y2 + 1)).save(path + "new" + str(groupCnt) + ".png")
-            listCroppedImage.append(path + "new" + str(groupCnt) + ".png")
+            listCroppedImage.append({
+                'filepath': path + "new" + str(groupCnt) + ".png",
+                'x1': x1,
+                'x2': x2,
+                'y1': y1,
+                'y2': y2
+            })
 
 #print(visited[15][17])
 #print(visited[0][0])
@@ -98,7 +100,6 @@ for y in range(0, img.height):
 ### DETECT TEXT FROM listImage
 ### OUTPUT: listRecognizedWords
 ########################################################################################
-listRecognizedWords = []
 def infer(model, fnImg):
 	"recognize text in image provided by file path"
 	img = preprocess(cv2.imread(fnImg, cv2.IMREAD_GRAYSCALE), Model.imgSize)
@@ -111,18 +112,28 @@ def infer(model, fnImg):
 decoderType = 0
 model = Model(open('../model/charList.txt').read(), decoderType, mustRestore=True, dump=False)
 
-for filename in listCroppedImage:
+for element in listCroppedImage:
     #path = "../cropped/"
     #constraint.detectFile = path + filename
     #detectText.main()
     #listTextRecognized.append(constraint.textRecognized)
-    print(filename)
-    detectedWord = infer(model, filename)
+    #print(filename)
+    detectedWord = infer(model, element['filepath'])
     print(detectedWord)
-    listRecognizedWords.append(detectedWord)
+    element['word'] = detectedWord
 #print(x1, y1, x2, y2)
 
-print(listRecognizedWords)
+# Sắp xếp lại trật tự các chữ (bằng cách sử dụng vị trí các chữ trong image)
+for i in range(0, len(listCroppedImage)):
+    for j in range(i + 1, len(listCroppedImage)):
+        first = listCroppedImage[i]
+        second = listCroppedImage[j]
+        if (first['x1'] > second['x2'] or first['y1'] > second['x2']):
+            listCroppedImage[i], listCroppedImage[j] = listCroppedImage[j], listCroppedImage[i]
+
+# In ra kết quả các chữ nhận diện được trong hình
+for element in listCroppedImage:
+    print(element['word'], end=" ")
 
 ######################################################################################
 
