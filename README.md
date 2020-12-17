@@ -4,10 +4,21 @@ Cài đặt các module cần có bằng câu lệnh sau (cd vào thư mục pro
 pip3 install -r requirements.txt
 ```
 
-Đặt file ảnh vào thư mục src/image.png và chạy câu lệnh sau:
+Full demo đọc text -> speech: (chỉnh đường dẫn file ảnh trong src/a.py)
+
 ```
 cd src
-python3 index.py
+python3 a.py
+```
+
+Demo bật camera:
+```
+cd src
+pythone3 opencamera.py
+
+
+Bấm ESC để thoát
+Bấm SPACE để chụp ảnh và chạy nhận diện (đang lỗi chưa chạy được đâu mấy fen :v, lỗi đoạn nhận diện khi ảnh quá nhiễu)
 ```
 
 Chưa cập nhật dataset vì quá nặng, chỉ có model đã được train sẵn.

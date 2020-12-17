@@ -13,10 +13,10 @@ class DetextText:
     def __init__(self):
         self.grayPoint = 150
 
-        path = str(pathlib.Path().absolute()) + "/cropped/"
-        for i in range(1, 10000):
-            if (os.path.isfile(path + "new" + str(i) + ".png")):
-                os.remove(path + "new" + str(i) + ".png")
+        # path = str(pathlib.Path().absolute()) + "/cropped/"
+        # for i in range(1, 10000):
+        #     if (os.path.isfile(path + "new" + str(i) + ".png")):
+        #         os.remove(path + "new" + str(i) + ".png")
 
     def resizeImage(self, imagePath, width):
         img = cv2.imread(imagePath, cv2.IMREAD_UNCHANGED)
@@ -115,16 +115,17 @@ class DetextText:
         kc = 0
         listCroppedImage = self.cropWordsImgFromImgWithKc(imagePath, 1)
 
-        # for element in listCroppedImage:
-        #     kc = max(kc, element['x2'] - element['x1'])
-        # kc = int(kc / 2)
-        # print(listCroppedImage)
-        # print("kc = ", kc)
+        for element in listCroppedImage:
+            kc = max(kc, element['x2'] - element['x1'])
+        kc = int(kc / 2)
+        print(listCroppedImage)
+        print("kc = ", kc)
 
-        kc = 1000
-        for i in range(0, len(listCroppedImage)):
-            for j in range(i + 1, len(listCroppedImage)):
-                kc = min(kc, abs(listCroppedImage[i]['x1'] - listCroppedImage[j]['x1']))
+        # kc = 1000
+        # for i in range(0, len(listCroppedImage)):
+        #     for j in range(i + 1, len(listCroppedImage)):
+        #         kc = min(kc, abs(listCroppedImage[i]['x1'] - listCroppedImage[j]['x1'])
+
 
         return kc
 
@@ -149,8 +150,14 @@ class DetextText:
                     listCroppedImage[i], listCroppedImage[j] = listCroppedImage[j], listCroppedImage[i]
         return listCroppedImage
 
-    def getDetectedWords(self, imagePath):
+    def getDetectedWords(self, imagePath, isScale = False):
+
+        if isScale:
+            self.resizeImage(imagePath, 500)
+            imagePath = 'scaledImage.png'
+
         listCroppedImage = self.cropWordsImgFromImg(imagePath)
+        # listCroppedImage = self.cropWordsImgFromImgWithKc(imagePath, 1)
         decoderType = 0
         model = Model(open('../model/charList.txt').read(), decoderType, mustRestore=True, dump=False)
         for element in listCroppedImage:
@@ -171,6 +178,6 @@ class DetextText:
 
 
 
-obj = DetextText()
-obj.resizeImage("test01.jpg", 500)
-print(obj.getDetectedWords("scaledImage.png"))
+# obj = DetextText()
+# obj.resizeImage("test01.jpg", 500)
+# print(obj.getDetectedWords("scaledImage.png"))
