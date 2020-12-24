@@ -22,6 +22,7 @@ class Model:
 	maxTextLen = 32
 
 	def __init__(self, charList, decoderType=DecoderType.BestPath, mustRestore=False, dump=False):
+		tf.reset_default_graph()
 		"init model: add CNN, RNN and CTC and initialize TF"
 		self.dump = dump
 		self.charList = charList
