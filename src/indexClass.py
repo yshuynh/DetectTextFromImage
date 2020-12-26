@@ -11,10 +11,15 @@ import shutil
 import pathlib
 import glob
 import numpy as np
+from playsound import playsound
+import ntpath
+import os.path
+import difflib
 
 class DetextText:
     def __init__(self):
-        self.grayPoint = 50
+        self.grayPoint = 100
+        self.grayPointForCut = 120
         decoderType = 0
         self.model = Model(open('../model/charList.txt').read(), decoderType, mustRestore=True, dump=False)
 
@@ -23,8 +28,22 @@ class DetextText:
         #     if (os.path.isfile(path + "new" + str(i) + ".png")):
         #         os.remove(path + "new" + str(i) + ".png")
 
+    def toSound(self, listWords):
+        path = "sound/*"
+        files = glob.glob(path, recursive=True)
+        print(files)
+        listsound = []
+        for f in files:
+            listsound.append(ntpath.basename(f))
+        print(listsound)
+        for ele in listWords:
+            filename = 'sound/' + difflib.get_close_matches(ele.lower() + '.mp3', listsound)[0]
+            if os.path.isfile(filename):
+                print (filename)
+                playsound(filename)
+
     # output: folder region
-    def cropTextRegion(self, imagePath, scale = 500):
+    def cropTextRegion(self, imagePath, scale = 1000):
         self.resizeImage(imagePath, scale)
         image_path = "scaledImage.png"
         path = "region/"
@@ -74,13 +93,25 @@ class DetextText:
         # img = self.resizeImage(imagePath, 1000)
         img = Image.open(imagePath)
         imgPixel = img.load()
-       
-       
+    
         for y in range(0, img.height):
             for x in range(0, img.width):
                 color2 = imgPixel[x, y]
                 gray_level = 0.299 * color2[0] + 0.587 * color2[1] + 0.114 * color2[2]
                 if gray_level < self.grayPoint:
+                    img.putpixel((x, y), (0, 0, 0))
+                else:
+                    img.putpixel((x, y), (255, 255, 255))
+        img.save("binary_pre.png")
+
+        img = Image.open(imagePath)
+        imgPixel = img.load()
+    
+        for y in range(0, img.height):
+            for x in range(0, img.width):
+                color2 = imgPixel[x, y]
+                gray_level = 0.299 * color2[0] + 0.587 * color2[1] + 0.114 * color2[2]
+                if gray_level < self.grayPointForCut:
                     img.putpixel((x, y), (0, 0, 0))
                 else:
                     img.putpixel((x, y), (255, 255, 255))
@@ -184,7 +215,7 @@ class DetextText:
                     if self.x2 - self.x1 + 1 <= 5:
                         continue
 
-                    self.img.crop((self.x1, self.y1, self.x2 + 1, self.y2 + 1)).save(path + "new" + str(groupCnt) + ".png")
+                    self.binaryImg.crop((self.x1, self.y1, self.x2 + 1, self.y2 + 1)).save(path + "new" + str(groupCnt) + ".png")
                     listCroppedImage.append({
                         'filepath': path + "new" + str(groupCnt) + ".png",
                         'x1': self.x1,
@@ -244,16 +275,17 @@ class DetextText:
         dem = 0
         for ele in listCroppedImage:
             dem = dem + 1
-            self.img.crop((ele['x1'], ele['y1'], ele['x2'] + 1, ele['y2'] + 1)).save(path + "sort" + str(dem) + ".png")
+            self.binaryImg.crop((ele['x1'], ele['y1'], ele['x2'] + 1, ele['y2'] + 1)).save(path + "sort" + str(dem) + ".png")
 
         return listCroppedImage
 
     def getDetectedWords(self, imagePath, isScale = False):
-        self.toBinaryImage(imagePath)
 
         if isScale:
-            self.resizeImage(imagePath, 1000)
+            self.resizeImage(imagePath, 500)
             imagePath = 'scaledImage.png'
+
+        self.toBinaryImage(imagePath)
 
         listCroppedImage = self.cropWordsImgFromImg(imagePath)
         # listCroppedImage = self.cropWordsImgFromImgWithKc(imagePath, 1)

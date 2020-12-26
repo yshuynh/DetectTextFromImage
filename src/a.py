@@ -29,10 +29,39 @@ obj = DetextText()
 #--------------
 
 #------------------
-list = obj.getDetectedWords("tho01.jpg", True)
+list = obj.getDetectedWords("abc.jpg", True)
+print(list)
+obj.toSound(list)
+exit()
 # obj.toBinaryImage("tho03.jpg")
 # list = obj.cropWordsImgFromImgWithKc("test01.jpg", 2)
+
 print(list)
+
+from playsound import playsound
+import ntpath
+import os.path
+import difflib
+# >>> difflib.get_close_matches('anlmal', ['car', 'animal', 'house', 'animation'])
+path = "sound/*"
+files = glob.glob(path, recursive=True)
+print(files)
+listsound = []
+for f in files:
+    listsound.append(ntpath.basename(f))
+print(listsound)
+
+
+# playsound('sound/bay.m4a')
+
+# print(difflib.get_close_matches('ơ.m4a', listsound))
+
+for ele in list:
+
+    filename = 'sound/' + difflib.get_close_matches(ele.lower() + '.', listsound)[0]
+    if os.path.isfile(filename):
+        print (filename)
+        playsound(filename)
 exit()
 
 #------------------
