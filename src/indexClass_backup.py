@@ -5,15 +5,121 @@ from Model import Model
 from SamplePreprocessor import preprocess
 from DataLoader import DataLoader, Batch
 import cv2
+from cv2 import boundingRect, countNonZero, cvtColor, drawContours, findContours, getStructuringElement, imread, morphologyEx, pyrDown, rectangle, threshold
 import os
 import shutil
 import pathlib
 import glob
+import numpy as np
+from playsound import playsound
+import ntpath
+import os.path
+import difflib
 
 class DetextText:
+    def __init__(self):
+        self.grayPoint = 100
+        self.grayPointForCut = 120
+        decoderType = 0
+        self.model = Model(open('../model/charList.txt').read(), decoderType, mustRestore=True, dump=False)
 
-    def createCroppedDic(self):
-        path = "cropped/"
+        # path = str(pathlib.Path().absolute()) + "/cropped/"
+        # for i in range(1, 10000):
+        #     if (os.path.isfile(path + "new" + str(i) + ".png")):
+        #         os.remove(path + "new" + str(i) + ".png")
+
+    def toSound(self, listWords):
+        path = "sound/*"
+        files = glob.glob(path, recursive=True)
+        print(files)
+        listsound = []
+        for f in files:
+            listsound.append(ntpath.basename(f))
+        print(listsound)
+        for ele in listWords:
+            filename = 'sound/' + difflib.get_close_matches(ele.lower() + '.mp3', listsound)[0]
+            if os.path.isfile(filename):
+                print (filename)
+                playsound(filename)
+
+    # output: folder region
+    def cropTextRegion(self, imagePath, scale = 1000):
+        self.resizeImage(imagePath, scale)
+        image_path = "scaledImage.png"
+        path = "region/"
+        self.createCroppedDic(path)
+
+
+        large = imread(image_path)
+        # downsample and use it for processing
+        rgb = pyrDown(large)
+        # apply grayscale
+        small = cvtColor(rgb, cv2.COLOR_BGR2GRAY)
+        # morphological gradient
+        morph_kernel = getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+        grad = morphologyEx(small, cv2.MORPH_GRADIENT, morph_kernel)
+        # binarize
+        _, bw = threshold(src=grad, thresh=0, maxval=255, type=cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+        morph_kernel = getStructuringElement(cv2.MORPH_RECT, (9, 1))
+        # connect horizontally oriented regions
+        connected = morphologyEx(bw, cv2.MORPH_CLOSE, morph_kernel)
+        mask = np.zeros(bw.shape, np.uint8)
+        # find contours
+        contours, hierarchy = findContours(connected, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
+        # filter contours
+        dem = 0
+        obj = DetextText()
+        text = ' '
+        for idx in range(0, len(hierarchy[0])):
+            rect = x, y, rect_width, rect_height = boundingRect(contours[idx])
+            # fill the contour
+            mask = drawContours(mask, contours, idx, (255, 255, 2555), cv2.FILLED)
+            # ratio of non-zero pixels in the filled region
+            r = float(countNonZero(mask)) / (rect_width * rect_height)
+            if r > 0.45 and rect_height > 8 and rect_width > 8:
+                # rgb = rectangle(rgb, (x, y+rect_height), (x+rect_width, y), (0,255,0),3)
+                crop_img = rgb[y+1:y+rect_height-2, x+1:x+rect_width-2]
+                # cv2.imshow("cropped", crop_img)
+                dem = dem + 1
+                cv2.imwrite(self.path + str(dem) + ".png", crop_img)
+                # listDetectedWords = obj.getDetectedWords(path + str(dem) + ".png")
+                # for element in listDetectedWords:
+                #     text += element
+                #     text += ' '
+                # print(text)
+                # cv2.waitKey(0)
+
+    def toBinaryImage(self, imagePath, destinationPath = 'binary.png'):
+        # img = self.resizeImage(imagePath, 1000)
+        img = Image.open(imagePath)
+        imgPixel = img.load()
+    
+        for y in range(0, img.height):
+            for x in range(0, img.width):
+                color2 = imgPixel[x, y]
+                gray_level = 0.299 * color2[0] + 0.587 * color2[1] + 0.114 * color2[2]
+                if gray_level < self.grayPoint:
+                    img.putpixel((x, y), (0, 0, 0))
+                else:
+                    img.putpixel((x, y), (255, 255, 255))
+        img.save("binary_pre.png")
+
+        img = Image.open(imagePath)
+        imgPixel = img.load()
+    
+        for y in range(0, img.height):
+            for x in range(0, img.width):
+                color2 = imgPixel[x, y]
+                gray_level = 0.299 * color2[0] + 0.587 * color2[1] + 0.114 * color2[2]
+                if gray_level < self.grayPointForCut:
+                    img.putpixel((x, y), (0, 0, 0))
+                else:
+                    img.putpixel((x, y), (255, 255, 255))
+        img.save(destinationPath)
+        self.binaryImg = Image.open(destinationPath)
+        return img
+
+    def createCroppedDic(self, path):
         files = glob.glob(path+'*.png', recursive=True)
         for f in files:
             try:
@@ -23,182 +129,6 @@ class DetextText:
         if not os.path.exists(path):
             os.makedirs(path)
         self.path = path
-
-    def toBinaryImage(self, imagePath, destinationPath = 'binary.png'):
-        # img = self.resizeImage(imagePath, 1000)
-        img = Image.open(imagePath)
-        imgPixel = img.load()
-       
-       
-        for y in range(0, img.height):
-            for x in range(0, img.width):
-                color2 = imgPixel[x, y]
-                gray_level = 0.299 * color2[0] + 0.587 * color2[1] + 0.114 * color2[2]
-                if gray_level < self.grayPoint:
-                    img.putpixel((x, y), (0, 0, 0))
-                else:
-                    img.putpixel((x, y), (255, 255, 255))
-        img.save(destinationPath)
-        return img
-
-    def getPoints(self, imgPixel, val, x1, y1, x2, y2):
-        dem = int(0)
-        print(x2, y2)
-        for x in range(x1, x2 + 1):
-            for y in range(y1, y2 + 1):
-                color2 = imgPixel[x, y]
-                gray_level = 0.299 * color2[0] + 0.587 * color2[1] + 0.114 * color2[2]
-                if gray_level == val:
-                    dem = dem + 1
-        return dem
-
-    def setRectPoint(self, img, val, x1, y1, x2, y2):
-        for x in range(x1, x2 + 1):
-            for y in range(y1, y2 + 1):
-                img.putpixel((x, y), (val, val, val))
-        return img
-
-    def khuNhieu(self, imagePath):
-        self.resizeImage(imagePath, 500)
-        img = self.toBinaryImage('scaledImage.png')
-        imgPixel = img.load()
-        listCroppedImage = self.cropWordsImgFromImgWithKc('scaledImage.png', 2)
-        print("size", img.width, img.height)
-        for ele in listCroppedImage:
-            # cntWhite = self.getPoints(imgPixel, 0, ele['x1'], ele['y1'], ele['x2'], ele['y2'])
-            cntBlack = self.getPoints(imgPixel, 255, ele['x1'], ele['y1'], ele['x2'], ele['y2'])
-            S = (ele['x2'] - ele['x1'] + 1) * (ele['y2'] - ele['y1'] + 1)
-            # if float(cntBlack) / S < 0.0001 or float(cntBlack) / S > 0.8:
-            #     img = self.setRectPoint(img, 255, ele['x1'], ele['y1'], ele['x2'], ele['y2'])
-            if (ele['x2'] - ele['x1'] + 1) / (ele['y2'] - ele['y1'] + 1) > 3.0:
-                img = self.setRectPoint(img, 255, ele['x1'], ele['y1'], ele['x2'], ele['y2'])
-            if (ele['y2'] - ele['y1'] + 1) / img.height < 0.01:
-                img = self.setRectPoint(img, 255, ele['x1'], ele['y1'], ele['x2'], ele['y2'])
-
-        img.save('khunhieu.png')
-
-
-    def phongToChu(self, img):
-        scaleLevel = 20
-        imgPixel = img.load()
-        list = []
-        for y in range(0, img.height):
-            for x in range(0, img.width):
-                color2 = imgPixel[x, y]
-                gray_level = 0.299 * color2[0] + 0.587 * color2[1] + 0.114 * color2[2]
-                if gray_level == 0:
-                    for newx in range(max(x - scaleLevel, 0), min(x + scaleLevel, img.width)):
-                        # imgcopy.putpixel((newx, y), (0, 0, 0))
-                        list.append((newx , y))
-                    # for newy in range(max(y - scaleLevel, 0), min(y + scaleLevel, img.height)):
-                    #     imgcopy.putpixel((x, newy), (0, 0, 0))
-                        # list.append((x , newy))
-        for element in list:
-            img.putpixel((element), (0, 0, 0))
-        img.save('phongtochu.png')
-
-    def getGrayLevel(self, imgPixel, x, y):
-        color2 = imgPixel[x, y]
-        gray_level = 0.299 * color2[0] + 0.587 * color2[1] + 0.114 * color2[2]
-        return gray_level
-
-    def cropTextRegion2(self, imagePath):
-        img = self.toBinaryImage(imagePath)
-        imgPixel = img.load()
-        
-        x1, x2, y1, y2 = 0, 0, 0, 0
-
-        for x1_ in range(0, img.width):
-            for y1_ in range(0, img.height):
-                for x2_ in range(x1_ + 1, img.width):
-                    for y2_ in range(y1_ + 1, img.height):
-                        kt = 1
-                        for i in range(x1_, x2_):
-                            if self.getGrayLevel(imgPixel, i, y1_) == 0 or self.getGrayLevel(imgPixel, i, y2_) == 0:
-                                kt = 0
-                                break
-                        for i in range(y1_, y2_):
-                            if self.getGrayLevel(imgPixel, x1_, i) == 0 or self.getGrayLevel(imgPixel, x2_, i) == 0:
-                                kt = 0
-                                break
-                        if (kt == 1):
-                            curS = (x2_ - x1_) * (y2_ - y1_)
-                            S = (x2 - x1) * (y2- y1)
-                            if (curS > S):
-                                x1, x2, y1, y2 = x1_, x2_, y1_, y2_
-        path = "region/"
-        if not os.path.exists(path):
-            os.makedirs(path)
-        img.crop((x1, y1, x2 + 1, y2 + 1)).save(path + "new" + str(x) + "-" + str(y) + ".png")
-        list.append({
-            'x1': x1,
-            'x2': x2,
-            'y1': y1,
-            'y2': y2
-        })
-        print(list)
-
-    def cropTextRegion(self, imagePath):
-        img = self.toBinaryImage(imagePath)
-        imgPixel = img.load()
-        
-        check = self.create2DArray(img.width, img.height)
-        dx = [-1, 11, 0, 0]
-        dy = [0, 0, -1, 1]
-
-        list = []
-
-        for y in range(0, img.height):
-            for x in range(0, img.width):
-                if check[x][y] == 0 and self.getGrayLevel(imgPixel, x, y) > 0:
-                    check[x][y] = 1
-                    x1, y1, x2, y2 = img.width, img.height, 0, 0
-                    queue = [(x, y)]
-                    while len(queue) > 0:
-                        ele = queue[-1]
-                        x1 = min(x1, ele[0])
-                        x2 = max(x2, ele[0])
-                        y1 = min(y1, ele[1])
-                        y2 = max(y2, ele[1])
-                        queue.pop(-1)
-                        for i in range(0, 4):
-                            newx = ele[0] + dx[i]
-                            newy = ele[1] + dy[i]
-                            if (newx < 0 or newx >= img.width or newy < 0 or newy >= img.height):
-                                continue
-                            if (self.getGrayLevel(imgPixel, newx, newy) == 0):
-                                continue
-                            if check[newx][newy] == 0:
-                                check[newx][newy] = 1
-                                queue.append((newx, newy))
-
-                    allS = img.height * img.width
-                    S = (x2 - x1) * (y2 - y1)
-                    if (S / allS < 0.2):
-                        continue
-                    path = "region/"
-                    if not os.path.exists(path):
-                        os.makedirs(path)
-                    img.crop((x1, y1, x2 + 1, y2 + 1)).save(path + "new" + str(x) + "-" + str(y) + ".png")
-                    list.append({
-                        'x1': x1,
-                        'x2': x2,
-                        'y1': y1,
-                        'y2': y2
-                    })
-        print(list)
-
-
-
-
-
-    def __init__(self):
-        self.grayPoint = 100
-
-        # path = str(pathlib.Path().absolute()) + "/cropped/"
-        # for i in range(1, 10000):
-        #     if (os.path.isfile(path + "new" + str(i) + ".png")):
-        #         os.remove(path + "new" + str(i) + ".png")
 
     def resizeImage(self, imagePath, width):
         img = cv2.imread(imagePath, cv2.IMREAD_UNCHANGED)
@@ -211,7 +141,6 @@ class DetextText:
         resized = cv2.resize(img, dim, interpolation = cv2.INTER_AREA)
         cv2.imwrite("scaledImage.png", resized)
         print('Resized Dimensions : ',resized.shape) 
-        return Image.open('scaledImage.png')
 
     def create2DArray(self, width, height):
         arr = []
@@ -245,7 +174,8 @@ class DetextText:
         return
 
     def cropWordsImgFromImgWithKc(self, imagePath, kc):
-        self.createCroppedDic()
+        path = "cropped/"
+        self.createCroppedDic(path)
         print("Start Crop Words Img From Img")
         print("imagePath", imagePath)
         self.img = Image.open(imagePath)
@@ -265,9 +195,9 @@ class DetextText:
                 gray_level = 0.299 * color2[0] + 0.587 * color2[1] + 0.114 * color2[2]
                 if gray_level < self.grayPoint and self.visited[x][y] == 0:
                     #print(x, y)
-                    self.x1 = 1000
+                    self.x1 = 100000
                     self.x2 = 0
-                    self.y1 = 1000
+                    self.y1 = 100000
                     self.y2 = 0
                     groupCnt = groupCnt + 1
                     #visit(x, y, groupCnt)
@@ -281,9 +211,13 @@ class DetextText:
                     # for i in range(1, 10000):
                     #     if (os.path.isfile(path + "new" + str(i) + ".png")):
                     #         os.remove(path + "new" + str(i) + ".png")
-                    self.img.crop((self.x1, self.y1, self.x2 + 1, self.y2 + 1)).save(self.path + "new" + str(groupCnt) + ".png")
+                    # khu nhieu
+                    if self.x2 - self.x1 + 1 <= 5:
+                        continue
+
+                    self.binaryImg.crop((self.x1, self.y1, self.x2 + 1, self.y2 + 1)).save(path + "new" + str(groupCnt) + ".png")
                     listCroppedImage.append({
-                        'filepath': self.path + "new" + str(groupCnt) + ".png",
+                        'filepath': path + "new" + str(groupCnt) + ".png",
                         'x1': self.x1,
                         'x2': self.x2,
                         'y1': self.y1,
@@ -294,12 +228,18 @@ class DetextText:
 
     def getKc(self, imagePath):
         kc = 0
-        listCroppedImage = self.cropWordsImgFromImgWithKc(imagePath, 1)
+        listCroppedImage = self.cropWordsImgFromImgWithKc(imagePath, 2)
+        sum = 0
+        dem = 0
 
         for element in listCroppedImage:
             kc = max(kc, element['x2'] - element['x1'])
-        kc = int(kc / 2)
-        print(listCroppedImage)
+            sum = sum + element['x2'] - element['x1']
+            dem = dem + 1
+        kc = int(kc / 3)
+        print("sum =", sum, "dem=", dem)
+        kc = int(sum / dem * 0.8)
+        # print(listCroppedImage)
         print("kc = ", kc)
 
         # kc = 1000
@@ -329,6 +269,14 @@ class DetextText:
                 second = listCroppedImage[j]
                 if ((first['y1'] > second['y2']) or (first['y1'] <= second['y2'] and first['y2'] >= second['y1'] and first['x1'] > second['x2'])):
                     listCroppedImage[i], listCroppedImage[j] = listCroppedImage[j], listCroppedImage[i]
+        
+        path = "sorted/"
+        self.createCroppedDic(path)
+        dem = 0
+        for ele in listCroppedImage:
+            dem = dem + 1
+            self.binaryImg.crop((ele['x1'], ele['y1'], ele['x2'] + 1, ele['y2'] + 1)).save(path + "sort" + str(dem) + ".png")
+
         return listCroppedImage
 
     def getDetectedWords(self, imagePath, isScale = False):
@@ -337,17 +285,18 @@ class DetextText:
             self.resizeImage(imagePath, 500)
             imagePath = 'scaledImage.png'
 
+        self.toBinaryImage(imagePath)
+
         listCroppedImage = self.cropWordsImgFromImg(imagePath)
         # listCroppedImage = self.cropWordsImgFromImgWithKc(imagePath, 1)
-        decoderType = 0
-        model = Model(open('../model/charList.txt').read(), decoderType, mustRestore=True, dump=False)
+        
         for element in listCroppedImage:
             #path = "../cropped/"
             #constraint.detectFile = path + filename
             #detectText.main()
             #listTextRecognized.append(constraint.textRecognized)
             #print(filename)
-            detectedWord = self.infer(model, element['filepath'])
+            detectedWord = self.infer(self.model, element['filepath'])
             print(detectedWord)
             element['word'] = detectedWord
         
@@ -356,60 +305,6 @@ class DetextText:
         for element in listCroppedImage:
             listDetectedWords.append(element['word']) 
         return listDetectedWords
-
-    
-    def getBlack(self, x1, y1, x2, y2):
-        dem = 0
-        for x in range(x1, x2+1):
-            for y in range(y1, y2+1):
-                color2 = self.imgPixel[x, y]
-                gray_level = 0.299 * color2[0] + 0.587 * color2[1] + 0.114 * color2[2]
-                if gray_level == 0:
-                    dem = dem + 1
-        return dem
-                
-
-    def checkRectWhite(self, x1, y1, x2, y2):
-        return self.getBlack(x1, y1, x1, y2) == 0 and self.getBlack(x2, y1, x2, y2) == 0 and self.getBlack(x1, y1, x2, y1) == 0 and self.getBlack(x1, y2, x2, y2) == 0
-
-    def getDetectedWordsVer2(self, imagePath, isScale = False):
-        # img = Image.open(imagePath)
-        img = self.resizeImage(imagePath, 500)
-        img = self.toBinaryImage('scaledImage.png')
-        # img.putpixel((1, 1), (0, 0, 0))
-        img.save('test.png')
-        imgPixel = img.load()
-        self.imgPixel = imgPixel
-        # summ = self.create2DArray(img.width, img.height)
-        # for i in range(0, img.width):
-        #     color2 = imgPixel[i, 0]
-        #     gray_level = 0.299 * color2[0] + 0.587 * color2[1] + 0.114 * color2[2]
-        #     summ[i][0] = gray_level / 255
-            
-        # for j in range(0, img.height):
-        #     color2 = imgPixel[0, j]
-        #     gray_level = 0.299 * color2[0] + 0.587 * color2[1] + 0.114 * color2[2]
-        #     summ[0][j] = gray_level / 255
-
-        # print(summ)
-
-        # for i in range(1, img.width):
-        #     for j in range(1, img.height):
-        #         color2 = imgPixel[i, j]
-        #         gray_level = 0.299 * color2[0] + 0.587 * color2[1] + 0.114 * color2[2]
-        #         summ[i][j] = summ[i - 1][j] + summ[i][j - 1] - summ[i - 1][j - 1] + gray_level / 255
-
-        # print(summ)
-
-        # print(self.getBlack(sum, 0, 0, 10, 10))
-        for x1 in range(0, img.width):
-            for y1 in range(0, img.height):
-                for x2 in range(x1 + 1, img.width):
-                    for y2 in range(y1 + 1, img.height):
-                        # if self.checkRectWhite(x1, y1, x2, y2) and self. getBlack(x1, y1, x2, y2) > 0:
-                        #     # print(x1, y1, x2, y2)
-                        a = 5
-
 
 
 

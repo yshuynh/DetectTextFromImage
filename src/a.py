@@ -29,7 +29,7 @@ obj = DetextText()
 #--------------
 
 #------------------
-list = obj.getDetectedWords("abc.jpg", True)
+list = obj.getDetectedWords("hinh/12.jpeg", True)
 print(list)
 obj.toSound(list)
 exit()

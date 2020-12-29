@@ -15,6 +15,7 @@ from playsound import playsound
 import ntpath
 import os.path
 import difflib
+import pygame
 
 class DetextText:
     def __init__(self):
@@ -28,7 +29,7 @@ class DetextText:
         #     if (os.path.isfile(path + "new" + str(i) + ".png")):
         #         os.remove(path + "new" + str(i) + ".png")
 
-    def toSound(self, listWords):
+    def toSoundLap(self, listWords):
         path = "sound/*"
         files = glob.glob(path, recursive=True)
         print(files)
@@ -37,10 +38,35 @@ class DetextText:
             listsound.append(ntpath.basename(f))
         print(listsound)
         for ele in listWords:
+            tmp = difflib.get_close_matches(ele.lower() + '.mp3', listsound)
+            if len(tmp) == 0:
+                continue
             filename = 'sound/' + difflib.get_close_matches(ele.lower() + '.mp3', listsound)[0]
             if os.path.isfile(filename):
                 print (filename)
                 playsound(filename)
+    
+    def toSound(self, listWords):        
+        path = "sound/*"
+        files = glob.glob(path, recursive=True)
+        print(files)
+        listsound = []
+        for f in files:
+            listsound.append(ntpath.basename(f))
+        print(listsound)
+        for ele in listWords:
+            tmp = difflib.get_close_matches(ele.lower() + '.mp3', listsound)
+            if len(tmp) == 0:
+                continue
+            filename = 'sound/' + difflib.get_close_matches(ele.lower() + '.mp3', listsound)[0]
+            filename = "sound/em.mp3"
+            if os.path.isfile(filename):
+                print (filename)
+                pygame.mixer.init()
+                pygame.mixer.music.load(filename)
+                pygame.mixer.music.play()
+                while pygame.mixer.music.get_busy() == True:
+                    continue
 
     # output: folder region
     def cropTextRegion(self, imagePath, scale = 1000):
